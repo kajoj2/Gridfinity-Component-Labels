@@ -37,21 +37,34 @@ CORS = {
 
 args = None  # set in __main__
 
+# Printable dots across the tape at 300 DPI for each label width (from brother_ql label defs)
+LABEL_PRINT_DOTS = {
+    '12': 106, '29': 306, '38': 413, '50': 554, '54': 590, '62': 696,
+}
 
-def print_label(png_bytes: bytes, label: str, rotate: str = 'cw') -> None:
+
+def print_label(png_bytes: bytes, label: str, rotate: str = 'ccw') -> None:
     img = Image.open(io.BytesIO(png_bytes)).convert('RGB')
 
-    # Pre-rotate so brother_ql doesn't need to guess orientation.
-    # 'cw'  → 90° clockwise  (PIL angle = -90): label text reads left-to-right on tape
-    # 'ccw' → 90° counter-clockwise (PIL angle = 90): mirror option if cw is wrong
-    # 'auto'→ let brother_ql decide (may rotate text sideways)
-    if rotate == 'cw':
-        img = img.rotate(-90, expand=True)
-        ql_rotate = '0'
-    elif rotate == 'ccw':
-        img = img.rotate(90, expand=True)
+    if rotate in ('cw', 'ccw'):
+        # Rotate the landscape label into portrait orientation.
+        # 'ccw' (PIL +90°): original left → bottom of portrait → tape-start edge (trailing)
+        # 'cw'  (PIL -90°): original left → top of portrait   → tape-start edge (leading)
+        img = img.rotate(90 if rotate == 'ccw' else -90, expand=True)
+
+        # After rotation img is narrow (label_height px) × tall (label_width px).
+        # brother_ql would SCALE this to fill the full tape width, making the label huge.
+        # Fix: create a canvas exactly as wide as the tape's printable dots and
+        # paste the label content centred — no scaling in brother_ql.
+        tape_dots = LABEL_PRINT_DOTS.get(str(label), 306)
+        img_w, img_h = img.size
+        canvas = Image.new('RGB', (tape_dots, img_h), (255, 255, 255))
+        x_off = (tape_dots - img_w) // 2
+        canvas.paste(img, (x_off, 0))
+        img = canvas
         ql_rotate = '0'
     else:
+        # 'auto': let brother_ql decide — may still scale/rotate unexpectedly
         ql_rotate = 'auto'
 
     qlr = BrotherQLRaster(args.model)
