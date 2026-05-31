@@ -37,7 +37,7 @@ const state = {
   border:   false,
   dark:     false,
   qlTape:   '29',
-  qlRotate: 'ccw',
+  qlRotate: 'poziomo',
 }
 
 const batch = {
@@ -133,7 +133,7 @@ function syncUIToState() {
   document.getElementById('sw-border').checked  = state.border
   document.getElementById('sw-dark').checked    = state.dark
   document.getElementById('sel-ql-tape').value   = state.qlTape   || '29'
-  setActiveToggle('tg-ql-rotate', state.qlRotate || 'cw')
+  setActiveToggle('tg-ql-rotate', state.qlRotate || 'poziomo')
   document.getElementById('width-slider').value = state.width
   document.getElementById('width-val').textContent = state.width + ' mm'
 }
@@ -455,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const prev = qlBtn.textContent
       qlBtn.textContent = '⏳ Printing…'
       try {
-        await directPrint(state, state.qlTape || '29', state.qlRotate || 'ccw')
+        await directPrint(state, state.qlTape || '29', state.qlRotate || 'poziomo')
         qlBtn.textContent = '✓ Sent!'
         setTimeout(() => { qlBtn.textContent = prev; qlBtn.disabled = false }, 2000)
       } catch (e) {
