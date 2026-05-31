@@ -2,7 +2,6 @@ import { ICON_B64 } from './icons-b64.js'
 
 const FONT = `'JetBrains Mono', Consolas, 'Courier New', monospace`
 
-// Fallback icon when no ISO standard is selected — based on subtype
 const SUBTYPE_ICON = {
   socket_head: 'din_912',
   button_head: 'iso_7380',
@@ -23,7 +22,7 @@ const SUBTYPE_ICON = {
 }
 
 function resolveIconKey(cfg) {
-  return cfg.iconKey || SUBTYPE_ICON[cfg.subtype] || null
+  return (cfg.iconKey || null) || SUBTYPE_ICON[cfg.subtype] || null
 }
 
 const SUBTYPE_LABELS = {
@@ -37,25 +36,29 @@ const SUBTYPE_LABELS = {
   insert:      'Threaded Insert',
 }
 
+// Reduce font size if text would overflow available width
+function autoFit(text, maxW, nominalFS, charRatio = 0.62) {
+  if (!text) return nominalFS
+  const needed = text.length * nominalFS * charRatio
+  return needed > maxW ? Math.max(2.8, maxW / (text.length * charRatio)) : nominalFS
+}
+
 export function generateSVG(cfg) {
   const W = cfg.width
   const H = cfg.height
   const pad = 1.0
 
-  // Horizontal PNG icons: aspect ~4:1, fill icon area height minus margins
-  const iconH   = H - 2.2                   // usable icon height in mm
-  const iconW   = iconH * 4.2               // maintain 4.2:1 aspect ratio
+  const iconH   = H - 2.2
+  const iconW   = iconH * 4.2
   const iconKey = resolveIconKey(cfg)
   const hasIcon = cfg.showIcon && iconKey && ICON_B64[iconKey]
 
-  // Icon area width: if icon present, carve out space; otherwise zero
-  const iconAreaW = hasIcon ? Math.min(iconW + pad * 2, W * 0.50) : 0
-  const iconX     = pad * 0.5
-  const iconY     = (H - iconH) / 2
+  const iconAreaW   = hasIcon ? Math.min(iconW + pad * 2, W * 0.50) : 0
+  const iconX       = pad * 0.5
+  const iconY       = (H - iconH) / 2
   const iconRenderW = iconAreaW - pad * 1.0
   const textX       = iconAreaW + pad * 0.5
 
-  // Derive display texts
   const subtext = cfg.showSub ? (SUBTYPE_LABELS[cfg.subtype] || '') : ''
   let mainText
   if (cfg.type === 'custom') {
@@ -69,10 +72,10 @@ export function generateSVG(cfg) {
   const customSubText = cfg.type === 'custom' ? (cfg.customSub || '') : ''
   const isoText = cfg.showIso && cfg.isoCode ? cfg.isoCode : ''
 
-  // Font sizes (mm = SVG user units)
-  const mainFS = H === 12 ? 5.2 : 4.0
-  const subFS  = H === 12 ? 2.0 : 1.75
-  const isoFS  = H === 12 ? 1.6 : 1.4
+  const textAreaW = W - iconAreaW - pad * 1.5
+  const mainFS    = autoFit(mainText, textAreaW, H === 12 ? 5.2 : 4.0)
+  const subFS     = H === 12 ? 2.0 : 1.75
+  const isoFS     = H === 12 ? 1.6 : 1.4
 
   const hasSub = subtext || customSubText
   const hasIso = !!isoText
@@ -90,20 +93,34 @@ export function generateSVG(cfg) {
     noteY = H - 0.7
   }
 
+  const bg      = cfg.dark ? '#111111' : 'white'
+  const cMain   = cfg.dark ? '#f0f0f0' : '#111'
+  const cSub    = cfg.dark ? '#aaaaaa' : '#888'
+  const cIso    = cfg.dark ? '#555555' : '#999'
+  const cNote   = cfg.dark ? '#666666' : '#aaa'
+  const cDiv    = cfg.dark ? '#404040' : '#ccc'
+  const cBorder = cfg.dark ? '#666666' : '#666'
+
+  // Invert PNG icons for dark labels so they show as light-on-dark
+  const defsSection = (hasIcon && cfg.dark)
+    ? `<defs><filter id="icn-inv"><feColorMatrix type="matrix" values="-1 0 0 0 1  0 -1 0 0 1  0 0 -1 0 1  0 0 0 1 0"/></filter></defs>`
+    : ''
+  const iconFilterAttr = (hasIcon && cfg.dark) ? ` filter="url(#icn-inv)"` : ''
+
   const iconSVG = hasIcon ? `
   <image x="${iconX.toFixed(2)}" y="${iconY.toFixed(2)}"
          width="${iconRenderW.toFixed(2)}" height="${iconH.toFixed(2)}"
          href="data:image/png;base64,${ICON_B64[iconKey]}"
-         preserveAspectRatio="xMidYMid meet"/>` : ''
+         preserveAspectRatio="xMidYMid meet"${iconFilterAttr}/>` : ''
 
   const divider = hasIcon ? `
   <line x1="${iconAreaW.toFixed(2)}" y1="${(pad * 0.8).toFixed(2)}"
         x2="${iconAreaW.toFixed(2)}" y2="${(H - pad * 0.8).toFixed(2)}"
-        stroke="#ccc" stroke-width="0.2"/>` : ''
+        stroke="${cDiv}" stroke-width="0.2"/>` : ''
 
   const borderSVG = cfg.border ? `
   <rect x="0.2" y="0.2" width="${(W - 0.4).toFixed(2)}" height="${(H - 0.4).toFixed(2)}"
-        fill="none" stroke="#666" stroke-width="0.28" stroke-dasharray="1.2,0.6"/>` : ''
+        fill="none" stroke="${cBorder}" stroke-width="0.28" stroke-dasharray="1.2,0.6"/>` : ''
 
   const displaySub = hasSub ? escXML(subtext || customSubText) : ''
 
@@ -111,13 +128,14 @@ export function generateSVG(cfg) {
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      width="${W}mm" height="${H}mm"
      viewBox="0 0 ${W} ${H}">
-  <rect width="${W}" height="${H}" fill="white"/>
+  <rect width="${W}" height="${H}" fill="${bg}"/>
+  ${defsSection}
   ${iconSVG}
   ${divider}
-  ${hasSub ? `<text x="${textX.toFixed(2)}" y="${subY}" font-family="${FONT}" font-size="${subFS}" font-weight="600" fill="#888">${displaySub}</text>` : ''}
-  <text x="${textX.toFixed(2)}" y="${mainY}" font-family="${FONT}" font-size="${mainFS}" font-weight="700" fill="#111">${escXML(mainText)}</text>
-  ${hasIso ? `<text x="${textX.toFixed(2)}" y="${isoY}" font-family="${FONT}" font-size="${isoFS}" font-weight="600" fill="#999">${escXML(isoText)}</text>` : ''}
-  ${cfg.note && !hasIso ? `<text x="${textX.toFixed(2)}" y="${noteY}" font-family="${FONT}" font-size="1.45" fill="#aaa">${escXML(cfg.note)}</text>` : ''}
+  ${hasSub ? `<text x="${textX.toFixed(2)}" y="${subY}" font-family="${FONT}" font-size="${subFS}" font-weight="600" fill="${cSub}">${displaySub}</text>` : ''}
+  <text x="${textX.toFixed(2)}" y="${mainY}" font-family="${FONT}" font-size="${mainFS.toFixed(2)}" font-weight="700" fill="${cMain}">${escXML(mainText)}</text>
+  ${hasIso ? `<text x="${textX.toFixed(2)}" y="${isoY}" font-family="${FONT}" font-size="${isoFS}" font-weight="600" fill="${cIso}">${escXML(isoText)}</text>` : ''}
+  ${cfg.note && !hasIso ? `<text x="${textX.toFixed(2)}" y="${noteY}" font-family="${FONT}" font-size="1.45" fill="${cNote}">${escXML(cfg.note)}</text>` : ''}
   ${borderSVG}
 </svg>`
 }

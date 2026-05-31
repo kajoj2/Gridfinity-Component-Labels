@@ -1,7 +1,3 @@
-// Canvas-based label renderer — bypasses SVG blob URL restrictions
-// that prevent <image data:...> elements from loading in some browsers.
-// Used for: PNG export, LBX export, (preview uses inline SVG instead).
-
 import { ICON_B64 } from './icons-b64.js'
 
 const SUBTYPE_ICON = {
@@ -16,7 +12,7 @@ const SUBTYPE_ICON = {
 }
 
 function resolveIconKey(cfg) {
-  return cfg.iconKey || SUBTYPE_ICON[cfg.subtype] || null
+  return (cfg.iconKey || null) || SUBTYPE_ICON[cfg.subtype] || null
 }
 
 const SUBTYPE_LABELS = {
@@ -39,32 +35,44 @@ function loadImage(src) {
   })
 }
 
+// Reduce font px if text measured width exceeds maxPx
+function fitFontPx(ctx, text, maxPx, nominalPx, weight, stack) {
+  if (!text) return nominalPx
+  ctx.font = `${weight} ${nominalPx}px ${stack}`
+  const w = ctx.measureText(text).width
+  return w > maxPx ? Math.max(nominalPx * 0.45, nominalPx * (maxPx / w)) : nominalPx
+}
+
 export async function renderLabel(cfg, dpi) {
   const W = cfg.width, H = cfg.height
-  const mm = dpi / 25.4  // px per mm
+  const mm = dpi / 25.4
 
   const canvas  = document.createElement('canvas')
   canvas.width  = Math.round(W * mm)
   canvas.height = Math.round(H * mm)
   const ctx = canvas.getContext('2d')
 
-  // Ensure fonts are loaded before drawing text
   await document.fonts.ready
 
-  // White background
-  ctx.fillStyle = 'white'
+  const bg    = cfg.dark ? '#111111' : '#ffffff'
+  const cMain = cfg.dark ? '#f0f0f0' : '#111111'
+  const cSub  = cfg.dark ? '#aaaaaa' : '#888888'
+  const cIso  = cfg.dark ? '#555555' : '#999999'
+  const cNote = cfg.dark ? '#666666' : '#aaaaaa'
+  const cDiv  = cfg.dark ? '#404040' : '#cccccc'
+
+  ctx.fillStyle = bg
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-  // ── Layout (mirrors svg-gen.js) ────────────────────────────────────
-  const pad      = 1.0
-  const iconH    = H - 2.2
-  const iconW    = iconH * 4.2
+  const pad       = 1.0
+  const iconH     = H - 2.2
+  const iconW     = iconH * 4.2
   const iconKey   = resolveIconKey(cfg)
   const hasIcon   = cfg.showIcon && iconKey && ICON_B64[iconKey]
   const iconAreaW = hasIcon ? Math.min(iconW + pad * 2, W * 0.50) : 0
   const textXmm   = iconAreaW + pad * 0.5
+  const textAreaW = (W - iconAreaW - pad * 1.5) * mm
 
-  // ── Icon ────────────────────────────────────────────────────────────
   if (hasIcon) {
     try {
       const img = await loadImage(`data:image/png;base64,${ICON_B64[iconKey]}`)
@@ -72,11 +80,12 @@ export async function renderLabel(cfg, dpi) {
       const iy  = ((H - iconH) / 2) * mm
       const iw  = Math.min(iconW, iconAreaW - pad) * mm
       const ih  = iconH * mm
+      if (cfg.dark) ctx.filter = 'invert(1)'
       ctx.drawImage(img, ix, iy, iw, ih)
-    } catch (_) { /* icon failed to load, skip */ }
+      if (cfg.dark) ctx.filter = 'none'
+    } catch (_) {}
 
-    // Divider line
-    ctx.strokeStyle = '#ccc'
+    ctx.strokeStyle = cDiv
     ctx.lineWidth   = 0.18 * mm
     ctx.beginPath()
     ctx.moveTo(iconAreaW * mm, pad * 0.8 * mm)
@@ -84,7 +93,6 @@ export async function renderLabel(cfg, dpi) {
     ctx.stroke()
   }
 
-  // ── Text content ────────────────────────────────────────────────────
   let mainText, subText
   if (cfg.type === 'custom') {
     mainText = cfg.customMain || '—'
@@ -102,12 +110,10 @@ export async function renderLabel(cfg, dpi) {
   const hasSub  = cfg.showSub && subText
   const hasIso  = !!isoText
 
-  // Font sizes in mm
-  const mainFS = H === 12 ? 5.2 : 4.0
-  const subFS  = H === 12 ? 2.0 : 1.75
-  const isoFS  = H === 12 ? 1.6 : 1.4
+  const mainFSbase = H === 12 ? 5.2 : 4.0
+  const subFS      = H === 12 ? 2.0 : 1.75
+  const isoFS      = H === 12 ? 1.6 : 1.4
 
-  // Vertical positions (baseline, in mm)
   let subY, mainY, isoY
   if (H === 12) {
     subY  = hasSub ? 3.6 : 0
@@ -122,30 +128,30 @@ export async function renderLabel(cfg, dpi) {
   const FONT_STACK = `"JetBrains Mono", "Fira Code", "Courier New", monospace`
 
   if (hasSub) {
-    ctx.fillStyle = '#888'
+    ctx.fillStyle = cSub
     ctx.font      = `600 ${(subFS * mm).toFixed(1)}px ${FONT_STACK}`
     ctx.fillText(subText, textXmm * mm, subY * mm)
   }
 
-  ctx.fillStyle = '#111'
-  ctx.font      = `700 ${(mainFS * mm).toFixed(1)}px ${FONT_STACK}`
+  const mainFSpx = fitFontPx(ctx, mainText, textAreaW, mainFSbase * mm, '700', FONT_STACK)
+  ctx.fillStyle = cMain
+  ctx.font      = `700 ${mainFSpx.toFixed(1)}px ${FONT_STACK}`
   ctx.fillText(mainText, textXmm * mm, mainY * mm)
 
   if (hasIso) {
-    ctx.fillStyle = '#999'
+    ctx.fillStyle = cIso
     ctx.font      = `600 ${(isoFS * mm).toFixed(1)}px ${FONT_STACK}`
     ctx.fillText(isoText, textXmm * mm, isoY * mm)
   }
 
   if (cfg.note && !hasIso) {
-    ctx.fillStyle = '#aaa'
+    ctx.fillStyle = cNote
     ctx.font      = `400 ${(1.45 * mm).toFixed(1)}px ${FONT_STACK}`
     ctx.fillText(cfg.note, textXmm * mm, (H - (H === 12 ? 0.8 : 0.7)) * mm)
   }
 
-  // ── Border ──────────────────────────────────────────────────────────
   if (cfg.border) {
-    ctx.strokeStyle = '#666'
+    ctx.strokeStyle = cfg.dark ? '#666666' : '#666666'
     ctx.lineWidth   = 0.28 * mm
     ctx.setLineDash([1.2 * mm, 0.6 * mm])
     ctx.strokeRect(0.2 * mm, 0.2 * mm, (W - 0.4) * mm, (H - 0.4) * mm)

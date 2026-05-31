@@ -114,7 +114,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); background: none
 .preview-meta { position: absolute; bottom: 6px; right: 9px; font-size: 9px; color: #999; letter-spacing: 1px; }
 
 /* Buttons */
-.dl-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 11px; }
+.dl-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 11px; }
 .btn { padding: 8px 10px; font-family: inherit; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; border: 1px solid var(--border); border-radius: 2px; background: var(--surface-2); color: var(--text-muted); transition: all 0.15s; outline: none; text-align: center; }
 .btn:hover { border-color: var(--border-2); color: var(--text); }
 .btn:disabled { opacity: 0.5; cursor: wait; }
