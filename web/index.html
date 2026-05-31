@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gridfinity Label Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">▦</div>
+  <div class="logo-text">
+    <span class="logo-title">Gridfinity Labels</span>
+    <span class="logo-sub">Component Label Generator</span>
+  </div>
+  <div class="header-tags">
+    <span class="tag">Client-Side</span>
+    <span class="tag">No Backend</span>
+  </div>
+</header>
+
+<main>
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" id="tab-single" data-mode="single">Single Label</button>
+      <button class="tab" id="tab-batch" data-mode="batch">Batch Mode</button>
+    </div>
+
+    <!-- ── SINGLE VIEW ── -->
+    <div id="view-single" class="card-body">
+
+      <!-- PRIMARY: ISO/DIN Standard -->
+      <div class="field">
+        <label class="field-label">ISO / DIN Standard</label>
+        <div class="iso-wrap">
+          <input type="text" class="iso-input" id="iso-input"
+                 placeholder="Search standard… e.g. ISO 4762, DIN 912, hex nut, washer"
+                 autocomplete="off">
+          <button class="iso-clear" id="iso-clear">×</button>
+          <div class="iso-dropdown" id="iso-dropdown"></div>
+        </div>
+        <div id="iso-selected-badge" class="iso-badge" style="display:none"></div>
+      </div>
+
+      <!-- Manual override (shown when no standard selected, or Custom) -->
+      <div id="manual-fields">
+        <div class="field">
+          <label class="field-label">Component Type</label>
+          <div class="toggle-group" id="tg-type">
+            <button class="toggle-btn active" data-val="screw">Screw</button>
+            <button class="toggle-btn" data-val="nut">Nut</button>
+            <button class="toggle-btn" data-val="washer">Washer</button>
+            <button class="toggle-btn" data-val="tnut">T-Nut</button>
+            <button class="toggle-btn" data-val="insert">Insert</button>
+            <button class="toggle-btn" data-val="bearing">Bearing</button>
+            <button class="toggle-btn" data-val="custom">Custom</button>
+          </div>
+        </div>
+
+        <div id="field-screw-sub" class="field">
+          <label class="field-label">Head Type</label>
+          <div class="toggle-group" id="tg-screw-sub">
+            <button class="toggle-btn active" data-val="socket_head">Socket</button>
+            <button class="toggle-btn" data-val="button_head">Button</button>
+            <button class="toggle-btn" data-val="pan_head">Pan</button>
+            <button class="toggle-btn" data-val="flat_head">Flat</button>
+            <button class="toggle-btn" data-val="hex_head">Hex</button>
+            <button class="toggle-btn" data-val="set_screw">Set</button>
+          </div>
+        </div>
+
+        <div id="field-nut-sub" class="field" style="display:none">
+          <label class="field-label">Nut Type</label>
+          <div class="toggle-group" id="tg-nut-sub">
+            <button class="toggle-btn active" data-val="hex_nut">Hex</button>
+            <button class="toggle-btn" data-val="square_nut">Square</button>
+            <button class="toggle-btn" data-val="lock_nut">Lock</button>
+            <button class="toggle-btn" data-val="nyloc">Nyloc</button>
+          </div>
+        </div>
+
+        <div id="field-tnut-sub" class="field" style="display:none">
+          <label class="field-label">T-Nut Type</label>
+          <div class="toggle-group" id="tg-tnut-sub">
+            <button class="toggle-btn active" data-val="rollin">Roll-In</button>
+            <button class="toggle-btn" data-val="hammerhead">Hammerhead</button>
+            <button class="toggle-btn" data-val="square_tnut">Square</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field" id="field-size">
+          <label class="field-label">Thread Size</label>
+          <select id="sel-size">
+            <option>M1.4</option><option>M1.6</option><option>M2</option>
+            <option>M2.5</option><option selected>M3</option><option>M4</option>
+            <option>M5</option><option>M6</option><option>M8</option><option>M10</option>
+          </select>
+        </div>
+        <div class="field" id="field-length">
+          <label class="field-label">Length (mm)</label>
+          <input type="number" id="inp-length" value="10" min="1" max="300">
+        </div>
+      </div>
+
+      <div class="field" id="field-note">
+        <label class="field-label">Note (optional)</label>
+        <input type="text" id="inp-note" placeholder="e.g. Stainless, A2, Grade 8.8…" maxlength="26">
+      </div>
+
+      <!-- Custom mode -->
+      <div id="field-custom" style="display:none">
+        <div class="field">
+          <label class="field-label">Main Text</label>
+          <input type="text" id="inp-main" placeholder="e.g. LM8UU, 608ZZ…" maxlength="10">
+        </div>
+        <div class="field">
+          <label class="field-label">Sub Text</label>
+          <input type="text" id="inp-sub" placeholder="e.g. Linear Bearing" maxlength="22">
+        </div>
+        <div class="field">
+          <label class="field-label">Note</label>
+          <input type="text" id="inp-custom-note" placeholder="optional" maxlength="22">
+        </div>
+      </div>
+
+      <!-- Advanced: thread pitch only -->
+      <div class="sep"></div>
+      <div class="adv-toggle" id="adv-toggle">
+        <span class="adv-arrow" id="adv-arrow">▶</span>
+        <span class="adv-label">Advanced</span>
+      </div>
+      <div class="adv-body" id="adv-body">
+        <div class="field" style="margin-top:10px">
+          <label class="field-label">Thread Pitch (mm)</label>
+          <input type="text" id="inp-pitch" placeholder="e.g. 0.5, 0.75…" maxlength="6">
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BATCH VIEW ── -->
+    <div id="view-batch" class="card-body" style="display:none">
+      <div class="field">
+        <label class="field-label">ISO / DIN Standard</label>
+        <div class="iso-wrap">
+          <input type="text" class="iso-input" id="batch-iso-input"
+                 placeholder="Search standard…" autocomplete="off">
+          <button class="iso-clear" id="batch-iso-clear">×</button>
+          <div class="iso-dropdown" id="batch-iso-dropdown"></div>
+        </div>
+        <div id="batch-iso-badge" class="iso-badge" style="display:none"></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label class="field-label">Thread Size</label>
+          <select id="batch-size">
+            <option>M2</option><option>M2.5</option><option selected>M3</option>
+            <option>M4</option><option>M5</option><option>M6</option><option>M8</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Note</label>
+          <input type="text" id="batch-note" placeholder="e.g. A2…" maxlength="20">
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">Lengths (mm)</label>
+        <div class="length-grid" id="len-grid"></div>
+      </div>
+      <div class="sep"></div>
+      <div class="dl-btns">
+        <button class="btn" id="btn-batch-zip">↓ ZIP (SVG)</button>
+        <button class="btn btn-lbx btn-full" id="btn-batch-lbx">↓ ZIP (LBX Brother)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: Preview + Settings ── -->
+  <div class="right-col">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Label Preview</span>
+        <span id="dim-label" class="dim-label">36 × 12 mm</span>
+      </div>
+      <div class="card-body">
+        <div class="preview-area" id="preview-area">
+          <div id="preview-svg-container"></div>
+          <span class="preview-meta" id="preview-meta">36 × 12 mm</span>
+        </div>
+        <div class="dl-btns">
+          <button class="btn" id="btn-svg">↓ SVG</button>
+          <button class="btn" id="btn-png">↓ PNG</button>
+          <button class="btn" id="btn-pdf">↓ PDF</button>
+          <button class="btn btn-lbx btn-full" id="btn-lbx">↓ LBX (Brother P-Touch)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Label Settings</span></div>
+      <div class="card-body">
+        <div class="switch-row">
+          <div class="switch-info">
+            <span class="switch-name">Hardware Icon</span>
+            <span class="switch-desc">Technical drawing of component</span>
+          </div>
+          <label class="sw"><input type="checkbox" id="sw-icon" checked><div class="sw-track"><div class="sw-thumb"></div></div></label>
+        </div>
+        <div class="switch-row">
+          <div class="switch-info">
+            <span class="switch-name">Sub Label</span>
+            <span class="switch-desc">Component type text</span>
+          </div>
+          <label class="sw"><input type="checkbox" id="sw-sub" checked><div class="sw-track"><div class="sw-thumb"></div></div></label>
+        </div>
+        <div class="switch-row">
+          <div class="switch-info">
+            <span class="switch-name">ISO/DIN on Label</span>
+            <span class="switch-desc">Standard designation</span>
+          </div>
+          <label class="sw"><input type="checkbox" id="sw-iso" checked><div class="sw-track"><div class="sw-thumb"></div></div></label>
+        </div>
+        <div class="switch-row">
+          <div class="switch-info">
+            <span class="switch-name">Border</span>
+            <span class="switch-desc">Dashed cut guide</span>
+          </div>
+          <label class="sw"><input type="checkbox" id="sw-border"><div class="sw-track"><div class="sw-thumb"></div></div></label>
+        </div>
+        <div class="sep"></div>
+        <div class="field">
+          <label class="field-label">Label Height</label>
+          <div class="toggle-group" id="tg-height">
+            <button class="toggle-btn" data-val="9">9 mm</button>
+            <button class="toggle-btn active" data-val="12">12 mm</button>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label class="field-label">Label Width &nbsp;<span id="width-val" class="accent">36 mm</span></label>
+          <input type="range" id="width-slider" min="28" max="62" value="36">
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
