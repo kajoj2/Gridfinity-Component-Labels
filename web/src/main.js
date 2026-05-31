@@ -5,6 +5,7 @@ import { dlSVG } from './export/svg.js'
 import { dlPNG } from './export/png.js'
 import { dlPDF } from './export/pdf.js'
 import { dlLBX, dlLBXBatch } from './export/lbx.js'
+import { printQL } from './export/ql.js'
 import { renderLabel } from './render.js'
 
 /* ═══════════════════════════════════════
@@ -34,6 +35,7 @@ const state = {
   showIso:  true,
   border:   false,
   dark:     false,
+  qlTape:  '29',
 }
 
 const batch = {
@@ -58,7 +60,7 @@ const TYPE_DEFAULTS = {
    PERSISTENCE — URL hash + localStorage
    ═══════════════════════════════════════ */
 const PERSIST_KEYS = ['type','subtype','size','length','isoCode','isoLabel','iconKey',
-  'height','width','showIcon','showSub','showIso','border','dark','note','pitch','customMain','customSub']
+  'height','width','showIcon','showSub','showIso','border','dark','note','pitch','customMain','customSub','qlTape']
 const BOOL_KEYS = new Set(['showIcon','showSub','showIso','border','dark'])
 const NUM_KEYS  = new Set(['height','width'])
 
@@ -128,6 +130,7 @@ function syncUIToState() {
   document.getElementById('sw-iso').checked     = state.showIso
   document.getElementById('sw-border').checked  = state.border
   document.getElementById('sw-dark').checked    = state.dark
+  document.getElementById('sel-ql-tape').value  = state.qlTape || '29'
   document.getElementById('width-slider').value = state.width
   document.getElementById('width-val').textContent = state.width + ' mm'
 }
@@ -407,6 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('sw-iso').addEventListener('change',    e => { state.showIso  = e.target.checked; updatePreview() })
   document.getElementById('sw-border').addEventListener('change', e => { state.border = e.target.checked; updatePreview() })
   document.getElementById('sw-dark').addEventListener('change',   e => { state.dark   = e.target.checked; updatePreview() })
+  document.getElementById('sel-ql-tape').addEventListener('change', e => { state.qlTape = e.target.value; saveState() })
   document.getElementById('width-slider').addEventListener('input', e => {
     state.width = +e.target.value
     document.getElementById('width-val').textContent = e.target.value + ' mm'
@@ -427,6 +431,10 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = true; btn.textContent = '⏳ Generating…'
     try { await dlLBX(state) }
     finally { btn.disabled = false; btn.textContent = '↓ LBX (Brother P-Touch)' }
+  })
+
+  document.getElementById('btn-ql').addEventListener('click', () => {
+    printQL(state, parseInt(state.qlTape || '29', 10))
   })
 
   document.getElementById('btn-copy').addEventListener('click', async () => {

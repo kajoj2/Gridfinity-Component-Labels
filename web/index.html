@@ -197,6 +197,7 @@
           <button class="btn" id="btn-png">↓ PNG</button>
           <button class="btn" id="btn-copy">⎘ Copy PNG</button>
           <button class="btn" id="btn-pdf">↓ PDF</button>
+          <button class="btn btn-ql btn-full" id="btn-ql">🖨 Print (QL-810C)</button>
           <button class="btn btn-lbx btn-full" id="btn-lbx">↓ LBX (Brother P-Touch)</button>
         </div>
       </div>
@@ -239,6 +240,16 @@
             <span class="switch-desc">White text on dark background</span>
           </div>
           <label class="sw"><input type="checkbox" id="sw-dark"><div class="sw-track"><div class="sw-thumb"></div></div></label>
+        </div>
+        <div class="switch-row">
+          <div class="switch-info">
+            <span class="switch-name">QL Tape</span>
+            <span class="switch-desc">DK roll width for Print button</span>
+          </div>
+          <select id="sel-ql-tape" class="sel-inline">
+            <option value="29" selected>29mm DK-2210</option>
+            <option value="62">62mm DK-2205</option>
+          </select>
         </div>
         <div class="sep"></div>
         <div class="field">

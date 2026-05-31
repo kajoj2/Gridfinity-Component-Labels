@@ -122,6 +122,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); background: none
 .btn-primary:hover { background: #ffb700; border-color: #ffb700; }
 .btn-lbx { background: var(--lbx-dim); border-color: var(--lbx); color: #60a5fa; font-weight: 700; }
 .btn-lbx:hover { background: rgba(37,99,235,0.25); color: #93c5fd; border-color: #3b82f6; }
+.btn-ql { background: rgba(22,163,74,0.12); border-color: #16a34a; color: #4ade80; font-weight: 700; }
+.btn-ql:hover { background: rgba(22,163,74,0.25); color: #86efac; border-color: #22c55e; }
+.sel-inline { width: auto; font-size: 11px; padding: 4px 22px 4px 7px; }
 .btn-full { grid-column: 1/-1; }
 
 /* ISO standard badge */
