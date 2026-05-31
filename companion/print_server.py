@@ -38,10 +38,24 @@ CORS = {
 args = None  # set in __main__
 
 
-def print_label(png_bytes: bytes, label: str) -> None:
+def print_label(png_bytes: bytes, label: str, rotate: str = 'cw') -> None:
     img = Image.open(io.BytesIO(png_bytes)).convert('RGB')
+
+    # Pre-rotate so brother_ql doesn't need to guess orientation.
+    # 'cw'  → 90° clockwise  (PIL angle = -90): label text reads left-to-right on tape
+    # 'ccw' → 90° counter-clockwise (PIL angle = 90): mirror option if cw is wrong
+    # 'auto'→ let brother_ql decide (may rotate text sideways)
+    if rotate == 'cw':
+        img = img.rotate(-90, expand=True)
+        ql_rotate = '0'
+    elif rotate == 'ccw':
+        img = img.rotate(90, expand=True)
+        ql_rotate = '0'
+    else:
+        ql_rotate = 'auto'
+
     qlr = BrotherQLRaster(args.model)
-    convert(qlr=qlr, images=[img], label=label, threshold=70, cut=True, rotate='auto')
+    convert(qlr=qlr, images=[img], label=label, threshold=70, cut=True, rotate=ql_rotate)
     send(instructions=qlr.data, printer_identifier=args.printer, backend_identifier='network')
 
 
@@ -74,8 +88,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             payload = json.loads(self.rfile.read(length))
             img_bytes = base64.b64decode(payload['image'])
-            label = str(payload.get('label', args.label))
-            print_label(img_bytes, label)
+            label  = str(payload.get('label',  args.label))
+            rotate = str(payload.get('rotate', 'ccw'))
+            print_label(img_bytes, label, rotate)
             self._send(200, json.dumps({'ok': True}))
             print(f'✓ Printed on {label}mm tape')
         except Exception as exc:

@@ -12,7 +12,7 @@ export async function checkCompanion() {
   }
 }
 
-export async function directPrint(cfg, tapeWidth = '29') {
+export async function directPrint(cfg, tapeWidth = '29', rotate = 'ccw') {
   const canvas = await renderLabel(cfg, 300)
 
   const blob = await new Promise(r => canvas.toBlob(r, 'image/png'))
@@ -28,7 +28,7 @@ export async function directPrint(cfg, tapeWidth = '29') {
   const r = await fetch(`${BASE}/print`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image: b64, label: String(tapeWidth) }),
+    body: JSON.stringify({ image: b64, label: String(tapeWidth), rotate }),
   })
 
   if (!r.ok) {

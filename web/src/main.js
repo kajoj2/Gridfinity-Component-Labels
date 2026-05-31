@@ -36,7 +36,8 @@ const state = {
   showIso:  true,
   border:   false,
   dark:     false,
-  qlTape:  '29',
+  qlTape:   '29',
+  qlRotate: 'ccw',
 }
 
 const batch = {
@@ -61,7 +62,7 @@ const TYPE_DEFAULTS = {
    PERSISTENCE — URL hash + localStorage
    ═══════════════════════════════════════ */
 const PERSIST_KEYS = ['type','subtype','size','length','isoCode','isoLabel','iconKey',
-  'height','width','showIcon','showSub','showIso','border','dark','note','pitch','customMain','customSub','qlTape']
+  'height','width','showIcon','showSub','showIso','border','dark','note','pitch','customMain','customSub','qlTape','qlRotate']
 const BOOL_KEYS = new Set(['showIcon','showSub','showIso','border','dark'])
 const NUM_KEYS  = new Set(['height','width'])
 
@@ -131,7 +132,8 @@ function syncUIToState() {
   document.getElementById('sw-iso').checked     = state.showIso
   document.getElementById('sw-border').checked  = state.border
   document.getElementById('sw-dark').checked    = state.dark
-  document.getElementById('sel-ql-tape').value  = state.qlTape || '29'
+  document.getElementById('sel-ql-tape').value   = state.qlTape   || '29'
+  setActiveToggle('tg-ql-rotate', state.qlRotate || 'cw')
   document.getElementById('width-slider').value = state.width
   document.getElementById('width-val').textContent = state.width + ' mm'
 }
@@ -412,6 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('sw-border').addEventListener('change', e => { state.border = e.target.checked; updatePreview() })
   document.getElementById('sw-dark').addEventListener('change',   e => { state.dark   = e.target.checked; updatePreview() })
   document.getElementById('sel-ql-tape').addEventListener('change', e => { state.qlTape = e.target.value; saveState() })
+  bindToggleGroup('tg-ql-rotate', val => { state.qlRotate = val; saveState() })
   document.getElementById('width-slider').addEventListener('input', e => {
     state.width = +e.target.value
     document.getElementById('width-val').textContent = e.target.value + ' mm'
@@ -452,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const prev = qlBtn.textContent
       qlBtn.textContent = '⏳ Printing…'
       try {
-        await directPrint(state, state.qlTape || '29')
+        await directPrint(state, state.qlTape || '29', state.qlRotate || 'ccw')
         qlBtn.textContent = '✓ Sent!'
         setTimeout(() => { qlBtn.textContent = prev; qlBtn.disabled = false }, 2000)
       } catch (e) {
