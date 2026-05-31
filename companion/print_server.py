@@ -18,6 +18,10 @@ import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 try:
+    import PIL.Image
+    # brother_ql uses the removed ANTIALIAS constant (Pillow < 10). Shim it.
+    if not hasattr(PIL.Image, 'ANTIALIAS'):
+        PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
     from PIL import Image
     from brother_ql.raster import BrotherQLRaster
     from brother_ql.conversion import convert
