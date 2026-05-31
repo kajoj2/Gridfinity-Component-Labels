@@ -17,44 +17,68 @@ export async function checkCompanion() {
 export async function directPrint(cfg, tapeWidth = '29', rotate = 'ccw') {
   const tapeDots = TAPE_DOTS[String(tapeWidth)] || 306
 
-  // 1. Render label at 300 DPI → landscape canvas (labelW × labelH px)
-  const label = await renderLabel(cfg, 300)
-  const lw = label.width   // label length in px  (e.g. 425 for 36 mm)
-  const lh = label.height  // label height in px  (e.g. 142 for 12 mm)
+  // 1. Render label at 300 DPI → landscape canvas lw × lh px
+  const label   = await renderLabel(cfg, 300)
+  const lw      = label.width   // label length px  (e.g. 425 for 36 mm)
+  const lh      = label.height  // label height px  (e.g. 142 for 12 mm)
+  const xOff    = Math.round((tapeDots - lh) / 2)  // centre label height in tape width
 
-  // 2. Build portrait tape canvas: tapeDots wide × lw tall
-  //    Width  = printable dots across tape (e.g. 306 for 29 mm)
-  //    Height = cut length in pixels       (e.g. 425 for 36 mm)
-  //    We do ALL rotation/centering here so the companion receives a ready image.
-  const tape = document.createElement('canvas')
-  tape.width  = tapeDots
-  tape.height = lw
+  // 2. Read source pixels
+  const src = label.getContext('2d').getImageData(0, 0, lw, lh).data
 
-  const ctx = tape.getContext('2d')
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, tapeDots, lw)
+  // 3. Build portrait tape canvas: tapeDots wide × lw tall
+  //    Width  = printable dots across tape  (e.g. 306 for 29 mm)
+  //    Height = cut length                  (e.g. 425 for 36 mm)
+  const tape    = document.createElement('canvas')
+  tape.width    = tapeDots
+  tape.height   = lw
+  const tapeCtx = tape.getContext('2d')
+  tapeCtx.fillStyle = '#ffffff'
+  tapeCtx.fillRect(0, 0, tapeDots, lw)
+  const dst = tapeCtx.getImageData(0, 0, tapeDots, lw)
 
-  // 3. Apply transform: label (x, y) → tape (canvas_col, canvas_row)
-  //    canvas_col = y + xOff   — label height centred in tape width
-  //    canvas_row = x          — label length runs along tape feed (CCW)
-  //    canvas_row = lw-1 - x  — reversed feed direction (CW)
+  // 4. Pixel-by-pixel copy with explicit coordinate mapping.
   //
-  //    Canvas setTransform(a, b, c, d, e, f):
-  //      canvas_x' = a·x + c·y + e
-  //      canvas_y' = b·x + d·y + f
+  //  In the label canvas:  x = horizontal (0 = label left), y = vertical (0 = label top)
+  //  In the tape canvas:   col = across tape, row = along tape (row 0 = first printed)
   //
-  //    CCW:  a=0, b=1,  c=1, d=0, e=xOff, f=0
-  //    CW:   a=0, b=-1, c=1, d=0, e=xOff, f=lw-1
-  const xOff = Math.round((tapeDots - lh) / 2)
-  if (rotate === 'ccw') {
-    ctx.setTransform(0, -1,  1, 0, xOff,          lw - 1)   // normal
-  } else {
-    ctx.setTransform(0,  1, -1, 0, lh - 1 + xOff, 0)        // 180° rotation
+  //  Brother QL feeds tape so that the LAST raster row exits FIRST.
+  //  Therefore row 0 (first printed) ends up at the PHYSICAL RIGHT when the label
+  //  is held with text reading left → right.
+  //
+  //  Normalnie (ccw):
+  //    col = y + xOff          label top  → left side of content zone on tape
+  //    row = lw - 1 - x        label left → row lw-1 (exits first → physical left) ✓
+  //
+  //  Odwróć (cw) — 180° rotation of the whole print:
+  //    col = (lh-1-y) + xOff   label bottom → left side of content zone (flipped)
+  //    row = x                 label left → row 0 (exits last → physical right)
+  //                            when tape is held from the other end, label reads normally
+
+  for (let x = 0; x < lw; x++) {
+    for (let y = 0; y < lh; y++) {
+      const si = (y * lw + x) * 4
+
+      let col, row
+      if (rotate === 'ccw') {
+        col = y + xOff
+        row = lw - 1 - x
+      } else {
+        col = (lh - 1 - y) + xOff
+        row = x
+      }
+
+      const di = (row * tapeDots + col) * 4
+      dst.data[di]     = src[si]
+      dst.data[di + 1] = src[si + 1]
+      dst.data[di + 2] = src[si + 2]
+      dst.data[di + 3] = src[si + 3]
+    }
   }
-  ctx.drawImage(label, 0, 0)
-  ctx.resetTransform()
 
-  // 4. Encode as base64 PNG and POST to companion
+  tapeCtx.putImageData(dst, 0, 0)
+
+  // 5. Encode and POST to companion
   const blob = await new Promise(r => tape.toBlob(r, 'image/png'))
   const b64  = await new Promise((res, rej) => {
     const fr = new FileReader()
