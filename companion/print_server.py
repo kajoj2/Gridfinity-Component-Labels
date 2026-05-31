@@ -37,38 +37,15 @@ CORS = {
 
 args = None  # set in __main__
 
-# Printable dots across the tape at 300 DPI for each label width (from brother_ql label defs)
-LABEL_PRINT_DOTS = {
-    '12': 106, '29': 306, '38': 413, '50': 554, '54': 590, '62': 696,
-}
 
-
-def print_label(png_bytes: bytes, label: str, rotate: str = 'ccw') -> None:
+def print_label(png_bytes: bytes, label: str) -> None:
+    # The JS side already built a correctly-sized portrait canvas:
+    #   width  = tape printable dots  (e.g. 306 for 29 mm DK-2210)
+    #   height = cut length in pixels (e.g. 425 for 36 mm label)
+    # No rotation or scaling needed — pass straight to brother_ql with rotate='0'.
     img = Image.open(io.BytesIO(png_bytes)).convert('RGB')
-
-    if rotate in ('cw', 'ccw'):
-        # Rotate the landscape label into portrait orientation.
-        # 'ccw' (PIL +90°): original left → bottom of portrait → tape-start edge (trailing)
-        # 'cw'  (PIL -90°): original left → top of portrait   → tape-start edge (leading)
-        img = img.rotate(90 if rotate == 'ccw' else -90, expand=True)
-
-        # After rotation img is narrow (label_height px) × tall (label_width px).
-        # brother_ql would SCALE this to fill the full tape width, making the label huge.
-        # Fix: create a canvas exactly as wide as the tape's printable dots and
-        # paste the label content centred — no scaling in brother_ql.
-        tape_dots = LABEL_PRINT_DOTS.get(str(label), 306)
-        img_w, img_h = img.size
-        canvas = Image.new('RGB', (tape_dots, img_h), (255, 255, 255))
-        x_off = (tape_dots - img_w) // 2
-        canvas.paste(img, (x_off, 0))
-        img = canvas
-        ql_rotate = '0'
-    else:
-        # 'auto': let brother_ql decide — may still scale/rotate unexpectedly
-        ql_rotate = 'auto'
-
     qlr = BrotherQLRaster(args.model)
-    convert(qlr=qlr, images=[img], label=label, threshold=70, cut=True, rotate=ql_rotate)
+    convert(qlr=qlr, images=[img], label=label, threshold=70, cut=True, rotate='0')
     send(instructions=qlr.data, printer_identifier=args.printer, backend_identifier='network')
 
 
@@ -101,9 +78,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             payload = json.loads(self.rfile.read(length))
             img_bytes = base64.b64decode(payload['image'])
-            label  = str(payload.get('label',  args.label))
-            rotate = str(payload.get('rotate', 'ccw'))
-            print_label(img_bytes, label, rotate)
+            label = str(payload.get('label', args.label))
+            print_label(img_bytes, label)
             self._send(200, json.dumps({'ok': True}))
             print(f'✓ Printed on {label}mm tape')
         except Exception as exc:
