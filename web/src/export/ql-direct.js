@@ -46,7 +46,7 @@ export async function directPrint(cfg, tapeWidth = '29', rotate = 'ccw') {
   //    CCW:  a=0, b=1,  c=1, d=0, e=xOff, f=0
   //    CW:   a=0, b=-1, c=1, d=0, e=xOff, f=lw-1
   const xOff = Math.round((tapeDots - lh) / 2)
-  ctx.setTransform(0, rotate === 'cw' ? -1 : 1, 1, 0, xOff, rotate === 'cw' ? lw - 1 : 0)
+  ctx.setTransform(0, rotate === 'ccw' ? -1 : 1, 1, 0, xOff, rotate === 'ccw' ? lw - 1 : 0)
   ctx.drawImage(label, 0, 0)
   ctx.resetTransform()
 
