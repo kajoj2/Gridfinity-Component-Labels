@@ -6,6 +6,7 @@ import { dlPNG } from './export/png.js'
 import { dlPDF } from './export/pdf.js'
 import { dlLBX, dlLBXBatch } from './export/lbx.js'
 import { printQL } from './export/ql.js'
+import { checkCompanion, directPrint } from './export/ql-direct.js'
 import { renderLabel } from './render.js'
 
 /* ═══════════════════════════════════════
@@ -433,8 +434,35 @@ document.addEventListener('DOMContentLoaded', () => {
     finally { btn.disabled = false; btn.textContent = '↓ LBX (Brother P-Touch)' }
   })
 
-  document.getElementById('btn-ql').addEventListener('click', () => {
-    printQL(state, parseInt(state.qlTape || '29', 10))
+  // QL direct print — check companion on startup, update button accordingly
+  let _companionOk = false
+  const qlBtn = document.getElementById('btn-ql')
+
+  checkCompanion().then(info => {
+    _companionOk = !!info
+    if (info) {
+      qlBtn.textContent = '⚡ Direct Print (QL)'
+      qlBtn.title = `Companion connected • ${info.model} • ${info.printer}`
+    }
+  })
+
+  qlBtn.addEventListener('click', async () => {
+    if (_companionOk) {
+      qlBtn.disabled = true
+      const prev = qlBtn.textContent
+      qlBtn.textContent = '⏳ Printing…'
+      try {
+        await directPrint(state, state.qlTape || '29')
+        qlBtn.textContent = '✓ Sent!'
+        setTimeout(() => { qlBtn.textContent = prev; qlBtn.disabled = false }, 2000)
+      } catch (e) {
+        qlBtn.textContent = '✗ Failed'
+        alert(`Print error: ${e.message}`)
+        setTimeout(() => { qlBtn.textContent = prev; qlBtn.disabled = false }, 2000)
+      }
+    } else {
+      printQL(state, parseInt(state.qlTape || '29', 10))
+    }
   })
 
   document.getElementById('btn-copy').addEventListener('click', async () => {
